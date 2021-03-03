@@ -53,7 +53,33 @@ def index():
 @login_required
 def buy():
     """Buy shares of stock"""
-    return apology("TODO")
+
+    if request.method == "POST":
+        # TODO
+        symbol = request.form.get('symbol')
+        data = lookup(symbol)
+        if not data:
+            return apology("EMPTY / WRONG SYMBOL")
+
+        cash = db.execute("SELECT cash FROM users WHERE id=:uid", uid=session["user_id"] )
+        shares = int(request.form.get('shares'))
+
+        if shares * data["price"] > cash[0]["cash"]:
+            return apology("YOU DON'T HAVE ENOUGH MONEY")
+
+        db.execute("UPDATE users SET cash=:cash WHERE id=:uid", cash=cash[0]["cash"] - shares * data["price"], uid=session["user_id"])
+        db.execute("INSERT INTO history (user_id, symbol, shares, price, type, total_amount, name) VALUES (:uid, :symbol, :shares, :price, :dtype, :total_amount, :name)",
+                    uid=session["user_id"], symbol=symbol, shares=shares, price=data["price"], dtype="BUY", total_amount=shares * data["price"], name=data["name"])
+
+        # don't know yet if it will be done:
+        db.execute("INSERT INTO index (user_id, symbol, name, shares) VALUES (:uid, :symbol, :name, :shares)", uid=session["user_id"], symbol=symbol, name=data["name"], shares=shares)
+
+        return redirect("/")
+
+    else:
+        # TODO
+        return render_template("buy.html")
+
 
 
 @app.route("/history")
@@ -114,7 +140,13 @@ def logout():
 @login_required
 def quote():
     """Get stock quote."""
-    return apology("TODO")
+
+    if request.method == "POST":
+        data = lookup(request.form.get('symbol'))
+        return render_template("quoted.html", data=data)
+
+    else:
+        return render_template("quote.html")
 
 
 @app.route("/register", methods=["GET", "POST"])
