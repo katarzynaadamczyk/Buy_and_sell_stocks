@@ -68,11 +68,15 @@ def buy():
             return apology("YOU DON'T HAVE ENOUGH MONEY")
 
         db.execute("UPDATE users SET cash=:cash WHERE id=:uid", cash=cash[0]["cash"] - shares * data["price"], uid=session["user_id"])
-        db.execute("INSERT INTO history (user_id, symbol, shares, price, type, total_amount, name) VALUES (:uid, :symbol, :shares, :price, :dtype, :total_amount, :name)",
-                    uid=session["user_id"], symbol=symbol, shares=shares, price=data["price"], dtype="BUY", total_amount=shares * data["price"], name=data["name"])
+        db.execute("INSERT INTO history (user_id, symbol, shares, price, dtype, total_amount) VALUES (:uid, :symbol, :shares, :price, :dtype, :total_amount)",
+                    uid=session["user_id"], symbol=data["symbol"], shares=shares, price=data["price"], dtype="BUY", total_amount=shares * data["price"])
 
-        # don't know yet if it will be done:
-        db.execute("INSERT INTO index (user_id, symbol, name, shares) VALUES (:uid, :symbol, :name, :shares)", uid=session["user_id"], symbol=symbol, name=data["name"], shares=shares)
+
+        owned_shares = db.execute("SELECT shares FROM user_index WHERE user_id=:uid AND symbol=:symbol", uid=session["user_id"], symbol=data["symbol"])
+        if len(owned_shares) > 0:
+            db.execute("UPDATE user_index SET shares=:shares WHERE user_id=:uid AND symbol=:symbol", shares=shares + owned_shares[0]["shares"], uid=session["user_id"], symbol=data["symbol"])
+        else:
+            db.execute("INSERT INTO user_index (user_id, symbol, shares) VALUES (:uid, :symbol, :shares)", uid=session["user_id"], symbol=data["symbol"], shares=shares)
 
         return redirect("/")
 
