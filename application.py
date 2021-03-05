@@ -46,7 +46,20 @@ if not os.environ.get("API_KEY"):
 @login_required
 def index():
     """Show portfolio of stocks"""
-    return apology("TODO")
+
+    cash = db.execute("SELECT cash FROM users WHERE id=:uid", uid=session["user_id"])
+    value = cash[0]["cash"]
+
+    portfolio = db.execute("SELECT symbol, shares FROM user_index WHERE user_id=:uid", uid=session["user_id"])
+    for row in portfolio:
+        # TO DO
+        data = lookup(row["symbol"])
+        row["price"] = float(data["price"])
+        row["name"] = data["name"]
+        row["total"] = row["shares"] * row["price"]
+        value += row["total"]
+
+    return render_template("index.html", portfolio=portfolio, cash=cash[0]["cash"], value=value)
 
 
 @app.route("/buy", methods=["GET", "POST"])
@@ -55,7 +68,6 @@ def buy():
     """Buy shares of stock"""
 
     if request.method == "POST":
-        # TODO
         symbol = request.form.get('symbol')
         data = lookup(symbol)
         if not data:
@@ -78,10 +90,10 @@ def buy():
         else:
             db.execute("INSERT INTO user_index (user_id, symbol, shares) VALUES (:uid, :symbol, :shares)", uid=session["user_id"], symbol=data["symbol"], shares=shares)
 
+        flash('You succesfully bought shares!')
         return redirect("/")
 
     else:
-        # TODO
         return render_template("buy.html")
 
 
@@ -171,8 +183,11 @@ def register():
             return apology("You put in blank or different passwords")
 
         db.execute("INSERT INTO users (username, hash) VALUES (:name, :password)", name=name, password=generate_password_hash(password1))
+        newid = db.execute("SELECT id FROM users WHERE username=:name", name=name)
 
-        return render_template("register.html", registered=True)
+        session["user_id"] = newid[0]["id"]
+        flash('You succesfully registered!')
+        return redirect("/")
     else:
         return render_template("register.html", registered=False)
 
