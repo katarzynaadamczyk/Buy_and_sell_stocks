@@ -1,0 +1,58 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Sell
+{% endblock %}
+
+{% block main %}
+    {% if possession %}
+        <form action="/sell" method="post">
+            <div class="form-group">
+                <select name="symbol" id="symbol" class="form-control">
+                    <option value="" selected disabled>--Symbol--</option>
+                    {% for row in possession %}
+                        <option value={{ row['symbol'] }}>{{ row['symbol'] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <input autocomplete="off" class="form-control" min="1" name="shares" id="shares" placeholder="Shares" type="number">
+            </div>
+            <button class="btn btn-primary" type="submit">Sell</button>
+        </form>
+
+        <script>
+            function change_shares()
+            {
+                let sel = document.querySelector('#symbol');
+                let sym;
+                for (var i = 0, len = sel.options.length; i < len; i++)
+                {
+                    sym = sel.options[i];
+                    if (sym.selected == true)
+                    {
+                        break;
+                    }
+                }
+
+                document.querySelector("#shares").max = sym.value;
+
+            }
+
+            document.querySelector("#symbol").addEventListener('change', function(){
+               change_shares();
+            });
+        </script>
+
+    {% else %}
+        <div class="info">
+            You don't have any shares to sell.
+        </div>
+        <div class="info">
+            Click <a href="/buy">here</a> to buy shares.
+        </div>
+        <div class="info">
+            Click <a href="/">here</a> to main page.
+        </div>
+    {% endif %}
+{% endblock %}

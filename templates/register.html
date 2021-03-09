@@ -5,11 +5,6 @@
 {% endblock %}
 
 {% block main %}
-    {% if registered %}
-        <div class="info">
-            You have been successfully registered. Click <a href="/login">here</a> to log in.
-        </div>
-    {% endif %}
     <form action="/register" method="post">
         <div class="form-group">
             <input autocomplete="off" autofocus class="form-control" name="username" placeholder="Username" type="text">
