@@ -1,0 +1,50 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    History
+{% endblock %}
+
+{% block main %}
+    <main class="container p-5">
+
+        {% if transactions %}
+        <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Symbol</th>
+                <th>Shares</th>
+                <th>Price</th>
+                <th>Transacted</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in transactions %}
+                <tr>
+                    <td>{{ row['symbol'] }}</td>
+                    <td>
+                        {% if row['dtype'] == 'SELL' %}
+                            -
+                        {% endif %}
+                        {{ row['shares'] }}
+                    </td>
+                    <td>{{ row['price'] | usd }}</td>
+                    <td>{{ row['transacted'] }}</td>
+                </tr>
+
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <div class="info">
+            You don't have any history yet.
+        </div>
+        <div class="info">
+            Click <a href="/buy">here</a> to buy shares.
+        </div>
+        <div class="info">
+            Click <a href="/">here</a> to main page.
+        </div>
+    {% endif %}
+
+    </main>
+{% endblock %}

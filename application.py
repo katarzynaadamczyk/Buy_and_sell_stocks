@@ -50,7 +50,7 @@ def index():
     cash = db.execute("SELECT cash FROM users WHERE id=:uid", uid=session["user_id"])
     value = cash[0]["cash"]
 
-    portfolio = db.execute("SELECT symbol, shares FROM user_index WHERE user_id=:uid", uid=session["user_id"])
+    portfolio = db.execute("SELECT symbol, shares FROM user_index WHERE user_id=:uid ORDER BY symbol", uid=session["user_id"])
     for row in portfolio:
         # TO DO
         data = lookup(row["symbol"])
@@ -74,21 +74,29 @@ def buy():
             return apology("EMPTY / WRONG SYMBOL")
 
         cash = db.execute("SELECT cash FROM users WHERE id=:uid", uid=session["user_id"])
-        shares = int(request.form.get('shares'))
+        shares = request.form.get('shares')
+
+        if not shares.isdigit():
+            return apology("WRONG TYPE OF SHARES")
+
+        shares = int(shares)
 
         if shares * data["price"] > cash[0]["cash"]:
             return apology("YOU DON'T HAVE ENOUGH MONEY")
 
-        db.execute("UPDATE users SET cash=:cash WHERE id=:uid", cash=cash[0]["cash"] - shares * data["price"], uid=session["user_id"])
+        db.execute("UPDATE users SET cash=:cash WHERE id=:uid",
+                   cash=cash[0]["cash"] - shares * data["price"], uid=session["user_id"])
         db.execute("INSERT INTO history (user_id, symbol, shares, price, dtype, total_amount) VALUES (:uid, :symbol, :shares, :price, :dtype, :total_amount)",
-                    uid=session["user_id"], symbol=data["symbol"], shares=shares, price=data["price"], dtype="BUY", total_amount=shares * data["price"])
+                   uid=session["user_id"], symbol=data["symbol"], shares=shares, price=data["price"], dtype="BUY", total_amount=shares * data["price"])
 
-
-        owned_shares = db.execute("SELECT shares FROM user_index WHERE user_id=:uid AND symbol=:symbol", uid=session["user_id"], symbol=data["symbol"])
+        owned_shares = db.execute("SELECT shares FROM user_index WHERE user_id=:uid AND symbol=:symbol",
+                                  uid=session["user_id"], symbol=data["symbol"])
         if len(owned_shares) > 0:
-            db.execute("UPDATE user_index SET shares=:shares WHERE user_id=:uid AND symbol=:symbol", shares=shares + owned_shares[0]["shares"], uid=session["user_id"], symbol=data["symbol"])
+            db.execute("UPDATE user_index SET shares=:shares WHERE user_id=:uid AND symbol=:symbol",
+                       shares=shares + owned_shares[0]["shares"], uid=session["user_id"], symbol=data["symbol"])
         else:
-            db.execute("INSERT INTO user_index (user_id, symbol, shares) VALUES (:uid, :symbol, :shares)", uid=session["user_id"], symbol=data["symbol"], shares=shares)
+            db.execute("INSERT INTO user_index (user_id, symbol, shares) VALUES (:uid, :symbol, :shares)",
+                       uid=session["user_id"], symbol=data["symbol"], shares=shares)
 
         flash('You succesfully bought shares!')
         return redirect("/")
@@ -97,12 +105,15 @@ def buy():
         return render_template("buy.html")
 
 
-
 @app.route("/history")
 @login_required
 def history():
     """Show history of transactions"""
-    return apology("TODO")
+
+    transactions = db.execute(
+        "SELECT symbol, shares, price, dtype, transacted FROM history WHERE user_id=:uid", uid=session["user_id"])
+
+    return render_template("history.html", transactions=transactions)
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -159,7 +170,11 @@ def quote():
 
     if request.method == "POST":
         data = lookup(request.form.get('symbol'))
-        return render_template("quoted.html", data=data)
+
+        if data:
+            return render_template("quoted.html", data=data)
+        else:
+            return apology("WRONG / BLANK SYMBOL")
 
     else:
         return render_template("quote.html")
@@ -179,10 +194,11 @@ def register():
 
         password1 = request.form.get("password")
         password2 = request.form.get("confirmation")
-        if not password1 or not password2 or password1!=password2:
+        if not password1 or not password2 or password1 != password2:
             return apology("You put in blank or different passwords")
 
-        db.execute("INSERT INTO users (username, hash) VALUES (:name, :password)", name=name, password=generate_password_hash(password1))
+        db.execute("INSERT INTO users (username, hash) VALUES (:name, :password)",
+                   name=name, password=generate_password_hash(password1))
         newid = db.execute("SELECT id FROM users WHERE username=:name", name=name)
 
         session["user_id"] = newid[0]["id"]
@@ -190,8 +206,6 @@ def register():
         return redirect("/")
     else:
         return render_template("register.html")
-
-
 
 
 @app.route("/sell", methods=["GET", "POST"])
@@ -236,17 +250,18 @@ def sell():
         # update / delete symbol in user_index table
 
         if shares == owned_shares:
-            #delete
-            db.execute("DELETE FROM user_index WHERE user_id=:uid AND symbol=:symbol", uid=session["user_id"], symbol=data["symbol"])
+            # delete
+            db.execute("DELETE FROM user_index WHERE user_id=:uid AND symbol=:symbol",
+                       uid=session["user_id"], symbol=data["symbol"])
         else:
             # update
             owned_shares -= shares
-            db.execute("UPDATE user_index SET shares=:shares WHERE user_id=:uid AND symbol=:symbol", shares=owned_shares, uid=session["user_id"], symbol=data["symbol"])
+            db.execute("UPDATE user_index SET shares=:shares WHERE user_id=:uid AND symbol=:symbol",
+                       shares=owned_shares, uid=session["user_id"], symbol=data["symbol"])
 
         # add sell to history
         db.execute("INSERT INTO history (user_id, symbol, shares, price, dtype, total_amount) VALUES (:uid, :symbol, :shares, :price, :dtype, :total_amount)",
-                    uid=session["user_id"], symbol=data["symbol"], shares=shares, price=data["price"], dtype="SELL", total_amount=shares * data["price"])
-
+                   uid=session["user_id"], symbol=data["symbol"], shares=shares, price=data["price"], dtype="SELL", total_amount=shares * data["price"])
 
         flash('You succesfully sold ' + str(shares) + ' shares of ' + data["symbol"] + '!')
         return redirect("/")
