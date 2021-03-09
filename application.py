@@ -73,7 +73,7 @@ def buy():
         if not data:
             return apology("EMPTY / WRONG SYMBOL")
 
-        cash = db.execute("SELECT cash FROM users WHERE id=:uid", uid=session["user_id"] )
+        cash = db.execute("SELECT cash FROM users WHERE id=:uid", uid=session["user_id"])
         shares = int(request.form.get('shares'))
 
         if shares * data["price"] > cash[0]["cash"]:
@@ -189,7 +189,7 @@ def register():
         flash('You succesfully registered!')
         return redirect("/")
     else:
-        return render_template("register.html", registered=False)
+        return render_template("register.html")
 
 
 
@@ -198,7 +198,65 @@ def register():
 @login_required
 def sell():
     """Sell shares of stock"""
-    return apology("TODO")
+
+    if request.method == "POST":
+
+        # get data from form
+        symbol = request.form["symbol"]
+        shares = int(request.form.get("shares"))
+
+        flash(str(symbol) + " " + str(shares))
+
+        # get possession for the user
+        possession = db.execute("SELECT symbol, shares FROM user_index WHERE user_id=:uid", uid=session["user_id"])
+
+        # check if data provided from form is correct
+
+        confirm = False
+        owned_shares = 0
+
+        for row in possession:
+            if symbol == row["symbol"]:
+                if shares > int(row["shares"]) or shares < 0:
+                    return apology("You want to sell too many shares or you put in negative number of shares.")
+                else:
+                    owned_shares = row["shares"]
+                    confirm = True
+                    break
+
+        data = lookup(symbol)
+
+        if not confirm or not data:
+            return apology("You do not own any shares of mentioned company.")
+
+        # update cash in users table
+
+        cash = db.execute("SELECT cash FROM users WHERE id=:uid", uid=session["user_id"])
+        cash[0]["cash"] += shares * float(data["price"])
+        db.execute("UPDATE users SET cash=:cash WHERE id=:uid", cash=cash[0]["cash"], uid=session["user_id"])
+
+        # update / delete symbol in user_index table
+
+        if shares == owned_shares:
+            #delete
+            db.execute("DELETE FROM user_index WHERE user_id=:uid AND symbol=:symbol", uid=session["user_id"], symbol=data["symbol"])
+        else:
+            # update
+            owned_shares -= shares
+            db.execute("UPDATE user_index SET shares=:shares WHERE user_id=:uid AND symbol=:symbol", shares=owned_shares, uid=session["user_id"], symbol=data["symbol"])
+
+        # add sell to history
+        db.execute("INSERT INTO history (user_id, symbol, shares, price, dtype, total_amount) VALUES (:uid, :symbol, :shares, :price, :dtype, :total_amount)",
+                    uid=session["user_id"], symbol=data["symbol"], shares=shares, price=data["price"], dtype="SELL", total_amount=shares * data["price"])
+
+
+        flash('You succesfully sold ' + str(shares) + ' shares of ' + data["symbol"] + '!')
+        return redirect("/")
+    else:
+
+        possession = db.execute("SELECT symbol, shares FROM user_index WHERE user_id=:uid", uid=session["user_id"])
+
+        return render_template("sell.html", possession=possession)
 
 
 def errorhandler(e):
