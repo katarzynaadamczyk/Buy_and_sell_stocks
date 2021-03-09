@@ -205,8 +205,6 @@ def sell():
         symbol = request.form["symbol"]
         shares = int(request.form.get("shares"))
 
-        flash(str(symbol) + " " + str(shares))
-
         # get possession for the user
         possession = db.execute("SELECT symbol, shares FROM user_index WHERE user_id=:uid", uid=session["user_id"])
 
