@@ -1,4 +1,5 @@
 import os
+from decouple import config
 
 from flaskext.mysql import MySQL
 from flask import Flask, flash, redirect, render_template, request, session
@@ -38,18 +39,20 @@ Session(app)
 mysql = MySQL()
 
 # MySQL configurations
-app.config['MYSQL_DATABASE_USER'] = 'root'
-# app.config['MYSQL_DATABASE_PASSWORD'] = ''
-app.config['MYSQL_DATABASE_DB'] = 'mydb'
-app.config['MYSQL_DATABASE_HOST'] = 'localhost'
+app.config['MYSQL_DATABASE_USER'] = config("MYSQL_DATABASE_USER")
+app.config['MYSQL_DATABASE_PASSWORD'] = config("MYSQL_DATABASE_PASSWORD")
+app.config['MYSQL_DATABASE_DB'] = config("MYSQL_DATABASE_DB")
+app.config['MYSQL_DATABASE_HOST'] = config("MYSQL_DATABASE_HOST")
 mysql.init_app(app)
 
 # create connection to MySQL database
 conn = mysql.connect()
 
 # Make sure API key is set
-if not os.environ.get("API_KEY"):
-    raise RuntimeError("API_KEY not set")
+API_KEY = config("API_KEY")
+
+#if not os.environ.get("API_KEY"):
+#    raise RuntimeError("API_KEY not set")
 
 
 @app.route("/")
