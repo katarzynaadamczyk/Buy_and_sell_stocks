@@ -48,11 +48,14 @@ mysql.init_app(app)
 # create connection to MySQL database
 conn = mysql.connect()
 
+# create cursor to MySQL database to use stored procedures 
+cursor = conn.cursor()
+
 # Make sure API key is set
 API_KEY = config("API_KEY")
 
-#if not os.environ.get("API_KEY"):
-#    raise RuntimeError("API_KEY not set")
+if not API_KEY:
+    raise RuntimeError("API_KEY not set")
 
 
 @app.route("/")
@@ -201,8 +204,11 @@ def register():
         if not name:
             return apology("You have not put in any name")
 
-        names = db.execute("SELECT username FROM users WHERE username=:name", name=name)
-        if len(names) > 0:
+        # names = cursor.callproc('check_if_user_exists', [name])
+        
+        cursor.execute('SELECT username FROM users WHERE username=%(name)s', {'name': name})
+
+        if cursor.rowcount:
             return apology("Your name already exists, please choose a different one.")
 
         password1 = request.form.get("password")
