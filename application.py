@@ -204,11 +204,10 @@ def register():
         if not name:
             return apology("You have not put in any name")
 
-        # names = cursor.callproc('check_if_user_exists', [name])
+        names = 0
+        cursor.callproc('check_if_user_exists', [name, names])
         
-        cursor.execute('SELECT username FROM users WHERE username=%(name)s', {'name': name})
-
-        if cursor.rowcount:
+        if names:
             return apology("Your name already exists, please choose a different one.")
 
         password1 = request.form.get("password")
@@ -216,11 +215,21 @@ def register():
         if not password1 or not password2 or password1 != password2:
             return apology("You put in blank or different passwords")
 
-        db.execute("INSERT INTO users (username, hash) VALUES (:name, :password)",
-                   name=name, password=generate_password_hash(password1))
-        newid = db.execute("SELECT id FROM users WHERE username=:name", name=name)
-
-        session["user_id"] = newid[0]["id"]
+        # cursor.execute('SELECT username FROM users WHERE username=%(name)s', {'name': name})
+        
+        # db.execute("INSERT INTO users (username, hash) VALUES (:name, :password)",
+        #           name=name, password=generate_password_hash(password1))
+        # newid = db.execute("SELECT id FROM users WHERE username=:name", name=name)
+        
+        print(len(generate_password_hash(password1)))
+        id = 0
+        id2 = cursor.callproc('insert_new_user_and_return_his_id', [name, generate_password_hash(password1), 10000.0, id])
+        print('id')
+        print(id)
+        print('id2')
+        print(id2)
+        session["user_id"] = id
+        
         flash('You succesfully registered!')
         return redirect("/")
     else:
