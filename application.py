@@ -37,13 +37,13 @@ Session(app)
 
 # Connect to MySQL database
 
-db = mysql.connector.connect(user=config("MYSQL_DATABASE_USER"), 
+db_mysql = mysql.connector.connect(user=config("MYSQL_DATABASE_USER"), 
                              password=config("MYSQL_DATABASE_PASSWORD"), 
                              host=config("MYSQL_DATABASE_HOST"), 
                              database=config("MYSQL_DATABASE_DB"))
 
 # create cursor to MySQL database to use stored procedures 
-cursor = db.cursor()
+cursor = db_mysql.cursor()
 
 # Make sure API key is set
 API_KEY = config("API_KEY")
@@ -199,38 +199,24 @@ def register():
             return apology("You have not put in any name")
 
         names = cursor.callproc('check_if_user_exists', [name, 0])
-        print('names')
-        print(names)
-        print('rowcount')
-        print(cursor.rowcount)
-        print('stored_results')
-        for result in cursor.stored_results():
-            print(result.fetchall())
 
-        # cursor.execute('SELECT username FROM users WHERE username=%(name)s', {'name': name})
-        # if cursor.countrow:
-
-        if len(names[0]):
+        if names[1]:
             return apology("Your name already exists, please choose a different one.")
 
         password1 = request.form.get("password")
         password2 = request.form.get("confirmation")
         if not password1 or not password2 or password1 != password2:
             return apology("You put in blank or different passwords")
-
-        
         
         # db.execute("INSERT INTO users (username, hash) VALUES (:name, :password)",
         #           name=name, password=generate_password_hash(password1))
         # newid = db.execute("SELECT id FROM users WHERE username=:name", name=name)
         
-        id = 0
-        id2 = cursor.callproc('insert_new_user_and_return_his_id', [name, generate_password_hash(password1), 10000.0, id])
-        print('id')
-        print(id)
+        id2 = cursor.callproc('insert_new_user_and_return_his_id', [name, generate_password_hash(password1), 10000.0, 0])
+        db_mysql.commit()
         print('id2')
         print(id2)
-        session["user_id"] = id
+        session["user_id"] = id2[3]
         
         flash('You succesfully registered!')
         return redirect("/")
