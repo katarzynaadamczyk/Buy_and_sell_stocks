@@ -208,14 +208,8 @@ def register():
         if not password1 or not password2 or password1 != password2:
             return apology("You put in blank or different passwords")
         
-        # db.execute("INSERT INTO users (username, hash) VALUES (:name, :password)",
-        #           name=name, password=generate_password_hash(password1))
-        # newid = db.execute("SELECT id FROM users WHERE username=:name", name=name)
-        
         id2 = cursor.callproc('insert_new_user_and_return_his_id', [name, generate_password_hash(password1), 10000.0, 0])
         db_mysql.commit()
-        print('id2')
-        print(id2)
         session["user_id"] = id2[3]
         
         flash('You succesfully registered!')
@@ -301,3 +295,5 @@ for code in default_exceptions:
 
 if __name__ == "__main__":
     app.run()
+    cursor.close()
+    db_mysql.close()
