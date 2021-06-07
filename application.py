@@ -1,9 +1,9 @@
 import os
 from decouple import config
 
-from flaskext.mysql import MySQL
 from flask import Flask, flash, redirect, render_template, request, session
 from flask_session import Session
+import mysql.connector
 from tempfile import mkdtemp
 from werkzeug.exceptions import default_exceptions, HTTPException, InternalServerError
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -35,21 +35,15 @@ app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
-# Configure MySQL to use MySQL database
-mysql = MySQL()
+# Connect to MySQL database
 
-# MySQL configurations
-app.config['MYSQL_DATABASE_USER'] = config("MYSQL_DATABASE_USER")
-app.config['MYSQL_DATABASE_PASSWORD'] = config("MYSQL_DATABASE_PASSWORD")
-app.config['MYSQL_DATABASE_DB'] = config("MYSQL_DATABASE_DB")
-app.config['MYSQL_DATABASE_HOST'] = config("MYSQL_DATABASE_HOST")
-mysql.init_app(app)
-
-# create connection to MySQL database
-conn = mysql.connect()
+db = mysql.connector.connect(user=config("MYSQL_DATABASE_USER"), 
+                             password=config("MYSQL_DATABASE_PASSWORD"), 
+                             host=config("MYSQL_DATABASE_HOST"), 
+                             database=config("MYSQL_DATABASE_DB"))
 
 # create cursor to MySQL database to use stored procedures 
-cursor = conn.cursor()
+cursor = db.cursor()
 
 # Make sure API key is set
 API_KEY = config("API_KEY")
@@ -204,10 +198,19 @@ def register():
         if not name:
             return apology("You have not put in any name")
 
-        names = 0
-        cursor.callproc('check_if_user_exists', [name, names])
-        
-        if names:
+        names = cursor.callproc('check_if_user_exists', [name, 0])
+        print('names')
+        print(names)
+        print('rowcount')
+        print(cursor.rowcount)
+        print('stored_results')
+        for result in cursor.stored_results():
+            print(result.fetchall())
+
+        # cursor.execute('SELECT username FROM users WHERE username=%(name)s', {'name': name})
+        # if cursor.countrow:
+
+        if len(names[0]):
             return apology("Your name already exists, please choose a different one.")
 
         password1 = request.form.get("password")
@@ -215,13 +218,12 @@ def register():
         if not password1 or not password2 or password1 != password2:
             return apology("You put in blank or different passwords")
 
-        # cursor.execute('SELECT username FROM users WHERE username=%(name)s', {'name': name})
+        
         
         # db.execute("INSERT INTO users (username, hash) VALUES (:name, :password)",
         #           name=name, password=generate_password_hash(password1))
         # newid = db.execute("SELECT id FROM users WHERE username=:name", name=name)
         
-        print(len(generate_password_hash(password1)))
         id = 0
         id2 = cursor.callproc('insert_new_user_and_return_his_id', [name, generate_password_hash(password1), 10000.0, id])
         print('id')
