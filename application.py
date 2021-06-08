@@ -4,6 +4,7 @@ from decouple import config
 from flask import Flask, flash, redirect, render_template, request, session
 from flask_session import Session
 import mysql.connector
+from mysql.connector.cursor import MySQLCursor
 from tempfile import mkdtemp
 from werkzeug.exceptions import default_exceptions, HTTPException, InternalServerError
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -57,9 +58,8 @@ if not API_KEY:
 def index():
     """Show portfolio of stocks"""
 
-    cash = db.execute("SELECT cash FROM users WHERE id=:uid", uid=session["user_id"])
-    value = cash[0]["cash"]
-
+    cash = cursor.callproc('check_cash_for_user', [session["user_id"], 0])
+    value = cash[1]
     portfolio = db.execute("SELECT symbol, shares FROM user_index WHERE user_id=:uid ORDER BY symbol", uid=session["user_id"])
     for row in portfolio:
         # TO DO
@@ -69,7 +69,7 @@ def index():
         row["total"] = row["shares"] * row["price"]
         value += row["total"]
 
-    return render_template("index.html", portfolio=portfolio, cash=cash[0]["cash"], value=value)
+    return render_template("index.html", portfolio=portfolio, cash=cash[1], value=value)
 
 
 @app.route("/buy", methods=["GET", "POST"])
@@ -145,15 +145,17 @@ def login():
             return apology("must provide password", 403)
 
         # Query database for username
-        rows = db.execute("SELECT * FROM users WHERE username = ?", request.form.get("username"))
-
+        cursor.execute("SELECT hash, idusers FROM users WHERE username = %(name)s", {'name': request.form.get("username")})
+        print(cursor.rowcount)
+        rows = cursor.fetchall()
+        print(cursor.rowcount)
         # Ensure username exists and password is correct
-        if len(rows) != 1 or not check_password_hash(rows[0]["hash"], request.form.get("password")):
+        if len(rows) != 1 or not check_password_hash(rows[0][0], request.form.get("password")):
             return apology("invalid username and/or password", 403)
 
         # Remember which user has logged in
-        session["user_id"] = rows[0]["id"]
-
+        session["user_id"] = rows[0][1]
+        print(rows)
         # Redirect user to home page
         return redirect("/")
 
