@@ -146,9 +146,12 @@ def login():
 
         # Query database for username
         cursor.execute("SELECT hash, idusers FROM users WHERE username = %(name)s", {'name': request.form.get("username")})
+        # prints need to be removed
         print(cursor.rowcount)
         rows = cursor.fetchall()
         print(cursor.rowcount)
+
+
         # Ensure username exists and password is correct
         if len(rows) != 1 or not check_password_hash(rows[0][0], request.form.get("password")):
             return apology("invalid username and/or password", 403)
