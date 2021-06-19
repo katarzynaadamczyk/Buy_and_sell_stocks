@@ -76,10 +76,10 @@ def index():
         print(data)
         dic['symbol'] = row[0]
         dic['shares'] = row[1]
-        dic["price"] = float(data["price"])
-        dic["name"] = data["name"]
+        dic["price"] = 0.0 if not data else float(data["price"]) 
+        dic["name"] = '' if not data else data["name"]
         dic["total"] = dic["shares"] * dic["price"]
-        value += row["total"]
+        value += dic["total"]
         portfolio_dict.append(dic)
 
     print(portfolio_dict) # remove the print statement
