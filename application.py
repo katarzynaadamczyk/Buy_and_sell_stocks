@@ -47,11 +47,10 @@ db_mysql = mysql.connector.connect(user=config("MYSQL_DATABASE_USER"),
 cursor = db_mysql.cursor()
 
 # Make sure API key is set
-API_KEY = config("API_KEY")
+os.environ.setdefault('API_KEY', config("API_KEY"))
 
-if not API_KEY:
+if not os.environ.get('API_KEY'):
     raise RuntimeError("API_KEY not set")
-
 
 @app.route("/")
 @login_required
@@ -60,16 +59,32 @@ def index():
 
     cash = cursor.callproc('check_cash_for_user', [session["user_id"], 0])
     value = cash[1]
-    portfolio = db.execute("SELECT symbol, shares FROM user_index WHERE user_id=:uid ORDER BY symbol", uid=session["user_id"])
-    for row in portfolio:
-        # TO DO
-        data = lookup(row["symbol"])
-        row["price"] = float(data["price"])
-        row["name"] = data["name"]
-        row["total"] = row["shares"] * row["price"]
-        value += row["total"]
+    print(session["user_id"]) # remove the print statement
 
-    return render_template("index.html", portfolio=portfolio, cash=cash[1], value=value)
+    # Query database for symbol and shares
+    cursor.execute("SELECT symbol, shares FROM user_index WHERE user_id = %s ORDER BY symbol", (session["user_id"],))
+    portfolio = cursor.fetchall()
+    print(portfolio) # remove the print statement
+    portfolio_dict = list()
+    print(cursor.statement)
+
+    for row in portfolio:
+        dic = {}
+        print(row[0])
+        print(row[1])
+        data = lookup(row[0])
+        print(data)
+        dic['symbol'] = row[0]
+        dic['shares'] = row[1]
+        dic["price"] = float(data["price"])
+        dic["name"] = data["name"]
+        dic["total"] = dic["shares"] * dic["price"]
+        value += row["total"]
+        portfolio_dict.append(dic)
+
+    print(portfolio_dict) # remove the print statement
+    
+    return render_template("index.html", portfolio=portfolio_dict, cash=cash[1], value=value)
 
 
 @app.route("/buy", methods=["GET", "POST"])
