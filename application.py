@@ -98,7 +98,7 @@ def buy():
         if not data:
             return apology("EMPTY / WRONG SYMBOL")
 
-        cash = db.execute("SELECT cash FROM users WHERE id=:uid", uid=session["user_id"])
+        cash = cursor.callproc('check_cash_for_user', [session["user_id"], 0])
         shares = request.form.get('shares')
 
         if not shares.isdigit():
@@ -106,13 +106,11 @@ def buy():
 
         shares = int(shares)
 
-        if shares * data["price"] > cash[0]["cash"]:
+        if shares * data["price"] > cash[1]:
             return apology("YOU DON'T HAVE ENOUGH MONEY")
 
-        db.execute("UPDATE users SET cash=:cash WHERE id=:uid",
-                   cash=cash[0]["cash"] - shares * data["price"], uid=session["user_id"])
-        db.execute("INSERT INTO history (user_id, symbol, shares, price, dtype, total_amount) VALUES (:uid, :symbol, :shares, :price, :dtype, :total_amount)",
-                   uid=session["user_id"], symbol=data["symbol"], shares=shares, price=data["price"], dtype="BUY", total_amount=shares * data["price"])
+        cursor.callproc('update_users_cash', [cash[1] - shares * data["price"], session["user_id"]])
+        cursor.callproc('insert_into_history', [session["user_id"], data["symbol"], shares, data['price'], 'BUY', shares * data["price"]])
 
         owned_shares = db.execute("SELECT shares FROM user_index WHERE user_id=:uid AND symbol=:symbol",
                                   uid=session["user_id"], symbol=data["symbol"])
