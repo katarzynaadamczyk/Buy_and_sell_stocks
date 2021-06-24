@@ -1,4 +1,9 @@
-cs50
+decouple
 Flask
 Flask-Session
+mysql.connector
+os
 requests
+tempfile
+werkzeug.exceptions
+werkzeug.security

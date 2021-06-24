@@ -1,8 +1,10 @@
 import os
+from decouple import config
 
-from cs50 import SQL
 from flask import Flask, flash, redirect, render_template, request, session
 from flask_session import Session
+import mysql.connector
+from mysql.connector.cursor import MySQLCursor
 from tempfile import mkdtemp
 from werkzeug.exceptions import default_exceptions, HTTPException, InternalServerError
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -34,32 +36,55 @@ app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
-# Configure CS50 Library to use SQLite database
-db = SQL("sqlite:///finance.db")
+# Connect to MySQL database
+
+db_mysql = mysql.connector.connect(user=config("MYSQL_DATABASE_USER"), 
+                             password=config("MYSQL_DATABASE_PASSWORD"), 
+                             host=config("MYSQL_DATABASE_HOST"), 
+                             database=config("MYSQL_DATABASE_DB"))
+
+# create cursor to MySQL database to use stored procedures or execute queries
+cursor = db_mysql.cursor()
 
 # Make sure API key is set
-if not os.environ.get("API_KEY"):
-    raise RuntimeError("API_KEY not set")
+os.environ.setdefault('API_KEY', config("API_KEY"))
 
+if not os.environ.get('API_KEY'):
+    raise RuntimeError("API_KEY not set")
 
 @app.route("/")
 @login_required
 def index():
     """Show portfolio of stocks"""
 
-    cash = db.execute("SELECT cash FROM users WHERE id=:uid", uid=session["user_id"])
-    value = cash[0]["cash"]
+    cash = cursor.callproc('check_cash_for_user', [session["user_id"], 0])
+    value = cash[1]
+    print(session["user_id"]) # remove the print statement
 
-    portfolio = db.execute("SELECT symbol, shares FROM user_index WHERE user_id=:uid ORDER BY symbol", uid=session["user_id"])
+    # Query database for symbol and shares
+    cursor.execute("SELECT symbol, shares FROM user_index WHERE user_id = %s ORDER BY symbol", (session["user_id"],))
+    portfolio = cursor.fetchall()
+    print(portfolio) # remove the print statement
+    portfolio_dict = list()
+    print(cursor.statement)
+
     for row in portfolio:
-        # TO DO
-        data = lookup(row["symbol"])
-        row["price"] = float(data["price"])
-        row["name"] = data["name"]
-        row["total"] = row["shares"] * row["price"]
-        value += row["total"]
+        dic = {}
+        print(row[0])
+        print(row[1])
+        data = lookup(row[0])
+        print(data)
+        dic['symbol'] = row[0]
+        dic['shares'] = row[1]
+        dic["price"] = 0.0 if not data else float(data["price"]) 
+        dic["name"] = '' if not data else data["name"]
+        dic["total"] = dic["shares"] * dic["price"]
+        value += dic["total"]
+        portfolio_dict.append(dic)
 
-    return render_template("index.html", portfolio=portfolio, cash=cash[0]["cash"], value=value)
+    print(portfolio_dict) # remove the print statement
+    
+    return render_template("index.html", portfolio=portfolio_dict, cash=cash[1], value=value)
 
 
 @app.route("/buy", methods=["GET", "POST"])
@@ -73,7 +98,7 @@ def buy():
         if not data:
             return apology("EMPTY / WRONG SYMBOL")
 
-        cash = db.execute("SELECT cash FROM users WHERE id=:uid", uid=session["user_id"])
+        cash = cursor.callproc('check_cash_for_user', [session["user_id"], 0])
         shares = request.form.get('shares')
 
         if not shares.isdigit():
@@ -81,23 +106,23 @@ def buy():
 
         shares = int(shares)
 
-        if shares * data["price"] > cash[0]["cash"]:
+        if shares * data["price"] > cash[1]:
             return apology("YOU DON'T HAVE ENOUGH MONEY")
 
-        db.execute("UPDATE users SET cash=:cash WHERE id=:uid",
-                   cash=cash[0]["cash"] - shares * data["price"], uid=session["user_id"])
-        db.execute("INSERT INTO history (user_id, symbol, shares, price, dtype, total_amount) VALUES (:uid, :symbol, :shares, :price, :dtype, :total_amount)",
-                   uid=session["user_id"], symbol=data["symbol"], shares=shares, price=data["price"], dtype="BUY", total_amount=shares * data["price"])
+        cursor.callproc('update_users_cash', [cash[1] - shares * data["price"], session["user_id"]])
+        db_mysql.commit()
+        cursor.callproc('insert_into_history', [session["user_id"], data["symbol"], shares, data['price'], 'BUY', shares * data["price"]])
+        db_mysql.commit()
 
-        owned_shares = db.execute("SELECT shares FROM user_index WHERE user_id=:uid AND symbol=:symbol",
-                                  uid=session["user_id"], symbol=data["symbol"])
-        if len(owned_shares) > 0:
-            db.execute("UPDATE user_index SET shares=:shares WHERE user_id=:uid AND symbol=:symbol",
-                       shares=shares + owned_shares[0]["shares"], uid=session["user_id"], symbol=data["symbol"])
+        owned_shares = cursor.callproc('get_shares_from_user_for_symbol', [session["user_id"], data["symbol"], 0])
+        print(owned_shares) # remove print
+        if owned_shares[2] >= 0:
+            cursor.callproc('update_shares_for_user', [session["user_id"], data['symbol'], shares + owned_shares[2]])
+            db_mysql.commit()
         else:
-            db.execute("INSERT INTO user_index (user_id, symbol, shares) VALUES (:uid, :symbol, :shares)",
-                       uid=session["user_id"], symbol=data["symbol"], shares=shares)
-
+            cursor.callproc('insert_new_symbol_for_user', [session["user_id"], data['symbol'], shares])
+            db_mysql.commit()
+            
         flash('You succesfully bought shares!')
         return redirect("/")
 
@@ -110,8 +135,8 @@ def buy():
 def history():
     """Show history of transactions"""
 
-    transactions = db.execute(
-        "SELECT symbol, shares, price, dtype, transacted FROM history WHERE user_id=:uid", uid=session["user_id"])
+    cursor.execute("SELECT symbol, shares, price, dtype, transacted FROM history WHERE user_id=%(uid)s", {'uid': session["user_id"]})
+    transactions = cursor.fetchall()
 
     return render_template("history.html", transactions=transactions)
 
@@ -135,15 +160,20 @@ def login():
             return apology("must provide password", 403)
 
         # Query database for username
-        rows = db.execute("SELECT * FROM users WHERE username = ?", request.form.get("username"))
+        cursor.execute("SELECT hash, idusers FROM users WHERE username = %(name)s", {'name': request.form.get("username")})
+        # prints need to be removed
+        print(cursor.rowcount)
+        rows = cursor.fetchall()
+        print(cursor.rowcount)
+
 
         # Ensure username exists and password is correct
-        if len(rows) != 1 or not check_password_hash(rows[0]["hash"], request.form.get("password")):
+        if len(rows) != 1 or not check_password_hash(rows[0][0], request.form.get("password")):
             return apology("invalid username and/or password", 403)
 
         # Remember which user has logged in
-        session["user_id"] = rows[0]["id"]
-
+        session["user_id"] = rows[0][1]
+        print(rows)
         # Redirect user to home page
         return redirect("/")
 
@@ -188,20 +218,20 @@ def register():
         if not name:
             return apology("You have not put in any name")
 
-        names = db.execute("SELECT username FROM users WHERE username=:name", name=name)
-        if len(names) > 0:
+        names = cursor.callproc('check_if_user_exists', [name, 0])
+
+        if names[1]:
             return apology("Your name already exists, please choose a different one.")
 
         password1 = request.form.get("password")
         password2 = request.form.get("confirmation")
         if not password1 or not password2 or password1 != password2:
             return apology("You put in blank or different passwords")
-
-        db.execute("INSERT INTO users (username, hash) VALUES (:name, :password)",
-                   name=name, password=generate_password_hash(password1))
-        newid = db.execute("SELECT id FROM users WHERE username=:name", name=name)
-
-        session["user_id"] = newid[0]["id"]
+        
+        id2 = cursor.callproc('insert_new_user_and_return_his_id', [name, generate_password_hash(password1), 10000.0, 0])
+        db_mysql.commit()
+        session["user_id"] = id2[3]
+        
         flash('You succesfully registered!')
         return redirect("/")
     else:
@@ -220,7 +250,8 @@ def sell():
         shares = int(request.form.get("shares"))
 
         # get possession for the user
-        possession = db.execute("SELECT symbol, shares FROM user_index WHERE user_id=:uid", uid=session["user_id"])
+        cursor.execute("SELECT symbol, shares FROM user_index WHERE user_id=%(uid)s", {'uid': session["user_id"]})
+        possession = cursor.fetchall()
 
         # check if data provided from form is correct
 
@@ -228,11 +259,11 @@ def sell():
         owned_shares = 0
 
         for row in possession:
-            if symbol == row["symbol"]:
-                if shares > int(row["shares"]) or shares < 0:
+            if symbol == row[0]:
+                if shares > int(row[1]) or shares < 0:
                     return apology("You want to sell too many shares or you put in negative number of shares.")
                 else:
-                    owned_shares = row["shares"]
+                    owned_shares = row[1]
                     confirm = True
                     break
 
@@ -243,31 +274,33 @@ def sell():
 
         # update cash in users table
 
-        cash = db.execute("SELECT cash FROM users WHERE id=:uid", uid=session["user_id"])
-        cash[0]["cash"] += shares * float(data["price"])
-        db.execute("UPDATE users SET cash=:cash WHERE id=:uid", cash=cash[0]["cash"], uid=session["user_id"])
+        cash = cursor.callproc('check_cash_for_user', [session["user_id"], 0])
+        cash = cash[1] + shares * float(data["price"])
+        cursor.callproc('update_users_cash', (cash, session["user_id"]))
+        db_mysql.commit()
 
         # update / delete symbol in user_index table
 
         if shares == owned_shares:
             # delete
-            db.execute("DELETE FROM user_index WHERE user_id=:uid AND symbol=:symbol",
-                       uid=session["user_id"], symbol=data["symbol"])
+            cursor.callproc('delete_shares_for_user', (session["user_id"], symbol))
+            db_mysql.commit()
         else:
             # update
-            owned_shares -= shares
-            db.execute("UPDATE user_index SET shares=:shares WHERE user_id=:uid AND symbol=:symbol",
-                       shares=owned_shares, uid=session["user_id"], symbol=data["symbol"])
+            owned_shares -= shares # IN uid INT, IN sym VARCHAR(4), IN shrs int)
+            cursor.callproc('update_shares_for_user', (session["user_id"], symbol, owned_shares))
+            db_mysql.commit()
 
         # add sell to history
-        db.execute("INSERT INTO history (user_id, symbol, shares, price, dtype, total_amount) VALUES (:uid, :symbol, :shares, :price, :dtype, :total_amount)",
-                   uid=session["user_id"], symbol=data["symbol"], shares=shares, price=data["price"], dtype="SELL", total_amount=shares * data["price"])
+        cursor.callproc('insert_into_history', [session["user_id"], data["symbol"], shares, data['price'], 'SELL', shares * data["price"]])
+        db_mysql.commit()
 
         flash('You succesfully sold ' + str(shares) + ' shares of ' + data["symbol"] + '!')
         return redirect("/")
     else:
 
-        possession = db.execute("SELECT symbol, shares FROM user_index WHERE user_id=:uid", uid=session["user_id"])
+        cursor.execute("SELECT symbol, shares FROM user_index WHERE user_id=%(uid)s", {'uid': session["user_id"]})
+        possession = cursor.fetchall()
 
         return render_template("sell.html", possession=possession)
 
@@ -282,3 +315,8 @@ def errorhandler(e):
 # Listen for errors
 for code in default_exceptions:
     app.errorhandler(code)(errorhandler)
+
+if __name__ == "__main__":
+    app.run()
+    cursor.close()
+    db_mysql.close()
