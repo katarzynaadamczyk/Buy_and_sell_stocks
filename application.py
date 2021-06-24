@@ -98,7 +98,7 @@ def buy():
         if not data:
             return apology("EMPTY / WRONG SYMBOL")
 
-        cash = db.execute("SELECT cash FROM users WHERE id=:uid", uid=session["user_id"])
+        cash = cursor.callproc('check_cash_for_user', [session["user_id"], 0])
         shares = request.form.get('shares')
 
         if not shares.isdigit():
@@ -106,23 +106,19 @@ def buy():
 
         shares = int(shares)
 
-        if shares * data["price"] > cash[0]["cash"]:
+        if shares * data["price"] > cash[1]:
             return apology("YOU DON'T HAVE ENOUGH MONEY")
 
-        db.execute("UPDATE users SET cash=:cash WHERE id=:uid",
-                   cash=cash[0]["cash"] - shares * data["price"], uid=session["user_id"])
-        db.execute("INSERT INTO history (user_id, symbol, shares, price, dtype, total_amount) VALUES (:uid, :symbol, :shares, :price, :dtype, :total_amount)",
-                   uid=session["user_id"], symbol=data["symbol"], shares=shares, price=data["price"], dtype="BUY", total_amount=shares * data["price"])
+        cursor.callproc('update_users_cash', [cash[1] - shares * data["price"], session["user_id"]])
+        cursor.callproc('insert_into_history', [session["user_id"], data["symbol"], shares, data['price'], 'BUY', shares * data["price"]])
 
-        owned_shares = db.execute("SELECT shares FROM user_index WHERE user_id=:uid AND symbol=:symbol",
-                                  uid=session["user_id"], symbol=data["symbol"])
-        if len(owned_shares) > 0:
-            db.execute("UPDATE user_index SET shares=:shares WHERE user_id=:uid AND symbol=:symbol",
-                       shares=shares + owned_shares[0]["shares"], uid=session["user_id"], symbol=data["symbol"])
+        owned_shares = cursor.callproc('get_shares_from_user_for_symbol', [session["user_id"], data["symbol"], 0])
+        print(owned_shares) # remove print
+        if owned_shares[2] >= 0:
+            cursor.callproc('update_shares_for_user', [session["user_id"], data['symbol'], shares + owned_shares[2]])
         else:
-            db.execute("INSERT INTO user_index (user_id, symbol, shares) VALUES (:uid, :symbol, :shares)",
-                       uid=session["user_id"], symbol=data["symbol"], shares=shares)
-
+            cursor.callproc('insert_new_symbol_for_user', [session["user_id"], data['symbol'], shares])
+            
         flash('You succesfully bought shares!')
         return redirect("/")
 
