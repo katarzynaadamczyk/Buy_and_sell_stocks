@@ -110,14 +110,18 @@ def buy():
             return apology("YOU DON'T HAVE ENOUGH MONEY")
 
         cursor.callproc('update_users_cash', [cash[1] - shares * data["price"], session["user_id"]])
+        db_mysql.commit()
         cursor.callproc('insert_into_history', [session["user_id"], data["symbol"], shares, data['price'], 'BUY', shares * data["price"]])
+        db_mysql.commit()
 
         owned_shares = cursor.callproc('get_shares_from_user_for_symbol', [session["user_id"], data["symbol"], 0])
         print(owned_shares) # remove print
         if owned_shares[2] >= 0:
             cursor.callproc('update_shares_for_user', [session["user_id"], data['symbol'], shares + owned_shares[2]])
+            db_mysql.commit()
         else:
             cursor.callproc('insert_new_symbol_for_user', [session["user_id"], data['symbol'], shares])
+            db_mysql.commit()
             
         flash('You succesfully bought shares!')
         return redirect("/")
