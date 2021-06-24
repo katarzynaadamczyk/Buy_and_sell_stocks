@@ -43,7 +43,7 @@ db_mysql = mysql.connector.connect(user=config("MYSQL_DATABASE_USER"),
                              host=config("MYSQL_DATABASE_HOST"), 
                              database=config("MYSQL_DATABASE_DB"))
 
-# create cursor to MySQL database to use stored procedures 
+# create cursor to MySQL database to use stored procedures or execute queries
 cursor = db_mysql.cursor()
 
 # Make sure API key is set
@@ -135,8 +135,8 @@ def buy():
 def history():
     """Show history of transactions"""
 
-    transactions = db.execute(
-        "SELECT symbol, shares, price, dtype, transacted FROM history WHERE user_id=:uid", uid=session["user_id"])
+    cursor.execute("SELECT symbol, shares, price, dtype, transacted FROM history WHERE user_id=%(uid)s", {'uid': session["user_id"]})
+    transactions = cursor.fetchall()
 
     return render_template("history.html", transactions=transactions)
 

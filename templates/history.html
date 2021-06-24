@@ -20,15 +20,15 @@
         <tbody>
             {% for row in transactions %}
                 <tr>
-                    <td>{{ row['symbol'] }}</td>
+                    <td>{{ row[0] }}</td>
                     <td>
-                        {% if row['dtype'] == 'SELL' %}
+                        {% if row[3] == 'SELL' %}
                             -
                         {% endif %}
-                        {{ row['shares'] }}
+                        {{ row[1] }}
                     </td>
-                    <td>{{ row['price'] | usd }}</td>
-                    <td>{{ row['transacted'] }}</td>
+                    <td>{{ row[2] | usd }}</td>
+                    <td>{{ row[4] }}</td>
                 </tr>
 
             {% endfor %}
