@@ -250,7 +250,8 @@ def sell():
         shares = int(request.form.get("shares"))
 
         # get possession for the user
-        possession = db.execute("SELECT symbol, shares FROM user_index WHERE user_id=:uid", uid=session["user_id"])
+        cursor.execute("SELECT symbol, shares FROM user_index WHERE user_id=%(uid)s", {'uid': session["user_id"]})
+        possession = cursor.fetchall()
 
         # check if data provided from form is correct
 
@@ -258,11 +259,11 @@ def sell():
         owned_shares = 0
 
         for row in possession:
-            if symbol == row["symbol"]:
+            if symbol == row[0]:
                 if shares > int(row["shares"]) or shares < 0:
                     return apology("You want to sell too many shares or you put in negative number of shares.")
                 else:
-                    owned_shares = row["shares"]
+                    owned_shares = row[1]
                     confirm = True
                     break
 
@@ -273,32 +274,34 @@ def sell():
 
         # update cash in users table
 
-        cash = db.execute("SELECT cash FROM users WHERE id=:uid", uid=session["user_id"])
-        cash[0]["cash"] += shares * float(data["price"])
-        db.execute("UPDATE users SET cash=:cash WHERE id=:uid", cash=cash[0]["cash"], uid=session["user_id"])
+        cash = cursor.callproc('check_cash_for_user', [session["user_id"], 0])
+        cash[1] += shares * float(data["price"])
+        cursor.callproc('update_users_cash', (cash[1], session["user_id"]))
+        db_mysql.commit()
 
         # update / delete symbol in user_index table
 
         if shares == owned_shares:
             # delete
-            db.execute("DELETE FROM user_index WHERE user_id=:uid AND symbol=:symbol",
-                       uid=session["user_id"], symbol=data["symbol"])
+            cursor.callproc('delete_shares_for_user', (session["user_id"], symbol))
+            db_mysql.commit()
         else:
             # update
-            owned_shares -= shares
-            db.execute("UPDATE user_index SET shares=:shares WHERE user_id=:uid AND symbol=:symbol",
-                       shares=owned_shares, uid=session["user_id"], symbol=data["symbol"])
+            owned_shares -= shares # IN uid INT, IN sym VARCHAR(4), IN shrs int)
+            cursor.callproc('update_shares_for_user', (session["user_id"], symbol, owned_shares))
+            db_mysql.commit()
 
         # add sell to history
-        db.execute("INSERT INTO history (user_id, symbol, shares, price, dtype, total_amount) VALUES (:uid, :symbol, :shares, :price, :dtype, :total_amount)",
-                   uid=session["user_id"], symbol=data["symbol"], shares=shares, price=data["price"], dtype="SELL", total_amount=shares * data["price"])
+        cursor.callproc('insert_into_history', [session["user_id"], data["symbol"], shares, data['price'], 'SELL', shares * data["price"]])
+        db_mysql.commit()
 
         flash('You succesfully sold ' + str(shares) + ' shares of ' + data["symbol"] + '!')
         return redirect("/")
     else:
 
-        possession = db.execute("SELECT symbol, shares FROM user_index WHERE user_id=:uid", uid=session["user_id"])
-
+        cursor.execute("SELECT symbol, shares FROM user_index WHERE user_id=%(uid)s", {'uid': session["user_id"]})
+        possession = cursor.fetchall()
+        
         return render_template("sell.html", possession=possession)
 
 
