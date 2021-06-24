@@ -260,7 +260,7 @@ def sell():
 
         for row in possession:
             if symbol == row[0]:
-                if shares > int(row["shares"]) or shares < 0:
+                if shares > int(row[1]) or shares < 0:
                     return apology("You want to sell too many shares or you put in negative number of shares.")
                 else:
                     owned_shares = row[1]
@@ -275,8 +275,8 @@ def sell():
         # update cash in users table
 
         cash = cursor.callproc('check_cash_for_user', [session["user_id"], 0])
-        cash[1] += shares * float(data["price"])
-        cursor.callproc('update_users_cash', (cash[1], session["user_id"]))
+        cash = cash[1] + shares * float(data["price"])
+        cursor.callproc('update_users_cash', (cash, session["user_id"]))
         db_mysql.commit()
 
         # update / delete symbol in user_index table
@@ -301,7 +301,7 @@ def sell():
 
         cursor.execute("SELECT symbol, shares FROM user_index WHERE user_id=%(uid)s", {'uid': session["user_id"]})
         possession = cursor.fetchall()
-        
+
         return render_template("sell.html", possession=possession)
 
 
