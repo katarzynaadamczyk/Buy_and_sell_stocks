@@ -1,11 +1,6 @@
 # finance_CS50
-Project for CS50 course, extented by me. CS50 only wanted to create a Flask app for buying stocks, but I decided to do something more. 
+Project for CS50 course, extended by me. CS50 only wanted to create a Flask app for buying stocks, but I decided to do something more. 
 Instead on working just on sqlite3 database (easy connection when you have CS50 library) I decided to change it to MySQL database. As well as add some more features to the projects that were not in the scope of CS50 course. 
-
-
-# Project Name
-> Outline a brief description of your project.
-> Live demo [_here_](https://www.example.com). <!-- If you have the project hosted somewhere, include the link here. -->
 
 ## Table of Contents
 * [General Info](#general-information)
@@ -22,18 +17,22 @@ Instead on working just on sqlite3 database (easy connection when you have CS50 
 
 
 ## General Information
-- Provide general information about your project here.
-- What problem does it (intend to) solve?
-- What is the purpose of your project?
-- Why did you undertake it?
-<!-- You don't have to answer all the questions - just the ones relevant to your project. -->
+This is a project 
 
 
 ## Technologies Used
-- Tech 1 - version 1.0
-- Tech 2 - version 2.0
-- Tech 3 - version 3.0
-
+- Python - version 3.9.0
+- Jinja - version 3.0.0
+- Python libraries:
+  - os
+  - decouple
+  - flask
+  - mysql.connector
+  - tempfile
+  - werkzeug
+- Javascript 
+- HTML
+- CSS
 
 ## Features
 List the ready features here:
