@@ -12,7 +12,6 @@ Instead on working just on sqlite3 database (easy connection when you have CS50 
 * [Usage](#usage)
 * [Project Status](#project-status)
 * [Room for Improvement](#room-for-improvement)
-* [Acknowledgements](#acknowledgements)
 
 
 ## General Information
@@ -40,59 +39,39 @@ More enhancements can be found in open/closed issues.
 
 
 ## Features
-List the ready features here:
-- Awesome feature 1
-- Awesome feature 2
-- Awesome feature 3
+- Registering a new user
+- Buying stocks
+- Selling stocks
+- Viewing history of transactions for the user
 
 
 ## Screenshots
+TODO
 ![Example screenshot](./img/screenshot.png)
 <!-- If you have screenshots you'd like to share, include them here. -->
 
 
 ## Setup
-What are the project requirements/dependencies? Where are they listed? A requirements.txt or a Pipfile.lock file perhaps? Where is it located?
-
-Proceed to describe how to install / setup one's local environment / get started with the project.
+Project's requirements are listed in /requirements.txt. 
+To run the project on your computer you need to have a VirtualEnv installed on your desktop (just follow this tutorial: https://timmyreilly.azurewebsites.net/python-flask-windows-development-environment-setup/).
+Then you need to create MySQL Database on your computer (TODO).
+You will need to get an API_KEY - for that I created a free account on https://iexcloud.io/
+After that you need to make and .env file containing: 
+'MYSQL_DATABASE_USER = ?
+MYSQL_DATABASE_PASSWORD = ?
+MYSQL_DATABASE_DB = ?
+MYSQL_DATABASE_HOST = ?
+API_KEY = ?' 
+Then you should be able to work on VirtualEnv by entering the folder with application.py and working on your individual virtual environment.
 
 
 ## Usage
-How does one go about using it?
-Provide various use cases and code examples here.
-
-`write-your-code-here`
+The user is able to register, then check the stock by going to the quote section and writing there stocks abbreviations (4 letters). Then, if user has enough virtual cash, he can buy the stock in buy section or, if he needs money, he can sell the stock in sell section. As well as he can check the history in history section.
 
 
 ## Project Status
-Project is: _in progress_ / _complete_ / _no longer being worked on_. If you are no longer working on it, provide reasons why.
+Project is: in progress.
 
 
 ## Room for Improvement
-Include areas you believe need improvement / could be improved. Also add TODOs for future development.
-
-Room for improvement:
-- Improvement to be done 1
-- Improvement to be done 2
-
-To do:
-- Feature to be added 1
-- Feature to be added 2
-
-
-## Acknowledgements
-Give credit here.
-- This project was inspired by...
-- This project was based on [this tutorial](https://www.example.com).
-- Many thanks to...
-
-
-## Contact
-Created by [@flynerdpl](https://www.flynerd.pl/) - feel free to contact me!
-
-
-<!-- Optional -->
-<!-- ## License -->
-<!-- This project is open source and available under the [... License](). -->
-
-<!-- You don't have to include all sections - just the one's relevant to your project -->
+All things I may improve are listed in open issues.
