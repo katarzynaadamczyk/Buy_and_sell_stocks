@@ -2,6 +2,7 @@
 Project for CS50 course, extended by me. CS50 only wanted to create a Flask app for buying stocks, but I decided to do something more. 
 Instead on working just on sqlite3 database (easy connection when you have CS50 library) I decided to change it to MySQL database. As well as add some more features to the projects that were not in the scope of CS50 course. 
 
+
 ## Table of Contents
 * [General Info](#general-information)
 * [Technologies Used](#technologies-used)
@@ -12,12 +13,15 @@ Instead on working just on sqlite3 database (easy connection when you have CS50 
 * [Project Status](#project-status)
 * [Room for Improvement](#room-for-improvement)
 * [Acknowledgements](#acknowledgements)
-* [Contact](#contact)
-<!-- * [License](#license) -->
 
 
 ## General Information
-This is a project 
+This is an extended project for CS50 course on Harvard. The goal of this project was to implement a website on which an user can buy and sell stocks for learning purposes. The money and stocks are fictional. 
+Some of the code was already prepared by the stuff of the course - all of the file: helpers.py and layout.html as well as template in the application.py. 
+My job was to implement features of the project - routes and pages for buy, sell, login, register, history and quote. 
+The original project was implemented using cs50 library which contained connection to sqlite3 database. I changed this connection to connection with MySQL database. 
+The project for the course had just API_KEY set by writing export API_KEY = xxx in the terminal before running the application. I changed this and used decouple library. I keep my login and password for MySQL database as well as the API_KEY in .env file on my computer. 
+More enhancements can be found in open/closed issues. 
 
 
 ## Technologies Used
@@ -33,6 +37,7 @@ This is a project
 - Javascript 
 - HTML
 - CSS
+
 
 ## Features
 List the ready features here:
